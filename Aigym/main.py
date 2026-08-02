@@ -5,7 +5,6 @@ from dotenv import load_dotenv
 load_dotenv()
 
 import time
-import requests
 import pandas as pd
 from services.auth.login_wall import render_login_wall
 from services.state.session_defaults import initial_session_defaults
@@ -20,44 +19,6 @@ from groq import Groq
 from services.coaching.llm import LLMCoach
 from services.coaching.tts import TextToSpeech
 from services.coaching.voice_pipeline import VoicePipeline, autoplay_audio, queue_audio
-
-
-@st.cache_data(ttl=3000)  # Metered credentials are valid for a while; refresh before they expire
-def get_ice_servers():
-    """
-    Fetch fresh STUN/TURN credentials from Metered.
-    Falls back to public Google STUN + old openrelay TURN if Metered fails,
-    so the app never crashes even if the API call has an issue.
-    """
-    domain = os.environ.get("METERED_DOMAIN")
-    api_key = os.environ.get("METERED_API_KEY")
-
-    fallback = [
-        {"urls": ["stun:stun.l.google.com:19302"]},
-        {
-            "urls": ["turn:openrelay.metered.ca:443?transport=tcp"],
-            "username": "openrelayproject",
-            "credential": "openrelayproject",
-        },
-    ]
-
-    if not domain or not api_key:
-        return fallback
-
-    try:
-        response = requests.get(
-            f"https://{domain}/api/v1/turn/credentials",
-            params={"apiKey": api_key},
-            timeout=5,
-        )
-        response.raise_for_status()
-        ice_servers = response.json()
-        if ice_servers:
-            return ice_servers
-        return fallback
-    except Exception as e:
-        print(f"[ICE-SERVERS] Failed to fetch Metered credentials, using fallback: {e}")
-        return fallback
 
 
 def main():
@@ -269,7 +230,27 @@ def main():
             key="exercise-analysis",
             mode=WebRtcMode.SENDRECV,
             video_processor_factory=VideoProcessorClass,
-            rtc_configuration={"iceServers": get_ice_servers()},
+            rtc_configuration={
+                "iceServers": [
+                    {"urls": ["stun:stun.l.google.com:19302"]},
+                    {"urls": ["stun:stun1.l.google.com:19302"]},
+                    {
+                        "urls": ["turn:openrelay.metered.ca:80"],
+                        "username": "openrelayproject",
+                        "credential": "openrelayproject",
+                    },
+                    {
+                        "urls": ["turn:openrelay.metered.ca:443"],
+                        "username": "openrelayproject",
+                        "credential": "openrelayproject",
+                    },
+                    {
+                        "urls": ["turn:openrelay.metered.ca:443?transport=tcp"],
+                        "username": "openrelayproject",
+                        "credential": "openrelayproject",
+                    },
+                ]
+            },
             media_stream_constraints={
                 "video": True,
                 "audio": False
