@@ -21,6 +21,13 @@ from services.coaching.tts import TextToSpeech
 from services.coaching.voice_pipeline import VoicePipeline, autoplay_audio, queue_audio
 
 
+# Absolute path to the directory this script lives in. Using this instead of
+# os.getcwd() ensures static assets resolve correctly regardless of the
+# working directory the app is launched from (e.g. Streamlit Cloud, Docker,
+# or a different invocation directory on a local machine).
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
+
 def main():
     st.set_page_config(
         page_icon="🏋️‍♀️",
@@ -29,8 +36,8 @@ def main():
         layout="centered"
     )
 
-    load_css(os.path.join(os.getcwd(), "static", "style.css"))
-    inject_local_font(os.path.join(os.getcwd(), "static", "AdobeClean.otf"), "AdobeClean")
+    load_css(os.path.join(BASE_DIR, "static", "style.css"))
+    inject_local_font(os.path.join(BASE_DIR, "static", "AdobeClean.otf"), "AdobeClean")
 
     init_db()
 
@@ -190,8 +197,10 @@ def main():
             elif exercise == "Lunges":
                 st.subheader("Lunge Metrics")
                 st.metric("Front Knee Angle", f"{st.session_state.front_knee_angle}°")
+                st.metric("Back Knee Angle", f"{st.session_state.back_knee_angle}°")
                 st.metric("Torso Angle", f"{st.session_state.torso_angle}°")
                 st.metric("Balance Status", st.session_state.balance_status)
+                st.metric("Posture Status", st.session_state.posture_status)
 
     st.title("AI Real-time GYM Coach")
     st.markdown("#### Real-time pose detection with proactive AI voice coaching")
@@ -239,7 +248,10 @@ def main():
         )
 
         if st.session_state.get("needs_processor_reset"):
-            print(f"[RESET-CHECK] needs_processor_reset=True, video_processor exists: {getattr(context, 'video_processor', None) is not None}")
+            print(
+                f"[RESET-CHECK] needs_processor_reset=True, "
+                f"video_processor exists: {getattr(context, 'video_processor', None) is not None}"
+            )
 
         if st.session_state.get("needs_processor_reset") and getattr(context, "video_processor", None):
             context.video_processor.reset_all()
